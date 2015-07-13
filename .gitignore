@@ -4,6 +4,9 @@ selfnotes.txt
 # Vagrant machine
 .vagrant/
 
+# objective image
+lesson4 objectives.png
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
