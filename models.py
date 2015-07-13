@@ -21,25 +21,6 @@ class ConflictException(endpoints.ServiceException):
     """ConflictException -- exception mapped to HTTP 409 response"""
     http_status = httplib.CONFLICT
 
-class Profile(ndb.Model):
-    """Profile -- User profile object"""
-    displayName = ndb.StringProperty()
-    mainEmail = ndb.StringProperty()
-    teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
-    conferenceKeysToAttend = ndb.StringProperty(repeated=True)
-
-class ProfileMiniForm(messages.Message):
-    """ProfileMiniForm -- update Profile form message"""
-    displayName = messages.StringField(1)
-    teeShirtSize = messages.EnumField('TeeShirtSize', 2)
-
-class ProfileForm(messages.Message):
-    """ProfileForm -- Profile outbound form message"""
-    displayName = messages.StringField(1)
-    mainEmail = messages.StringField(2)
-    teeShirtSize = messages.EnumField('TeeShirtSize', 3)
-    conferenceKeysToAttend = messages.StringField(4, repeated=True)
-
 class StringMessage(messages.Message):
     """StringMessage-- outbound (single) string message"""
     data = messages.StringField(1, required=True)
@@ -61,6 +42,10 @@ class Conference(ndb.Model):
     maxAttendees    = ndb.IntegerProperty()
     seatsAvailable  = ndb.IntegerProperty()
 
+    @property
+    def sessions(self):
+        return Session.query(ancestor=self.key)
+
 class ConferenceForm(messages.Message):
     """ConferenceForm -- Conference outbound form message"""
     name            = messages.StringField(1)
@@ -80,6 +65,59 @@ class ConferenceForms(messages.Message):
     """ConferenceForms -- multiple Conference outbound form message"""
     items = messages.MessageField(ConferenceForm, 1, repeated=True)
 
+class Session(ndb.Model):
+    """Session -- Session object"""
+    _use_memcache   = True
+
+    name            = ndb.StringProperty(required=True)
+    highlights      = ndb.StringProperty()
+    speaker         = ndb.StringProperty(required=True)
+    duration        = ndb.StringProperty()
+    typeOfSession   = ndb.StringProperty()
+    date            = ndb.DateProperty(required=True)
+    startTime       = ndb.TimeProperty(required=True) #24hr
+
+class SessionForm(messages.Message):
+    """SessionForm -- Session outbound form message"""
+    websafeConferenceKey    = messages.StringField(1)
+    name            = messages.StringField(2)
+    highlights      = messages.StringField(3)
+    speaker         = messages.StringField(4)
+    duration        = messages.StringField(5)
+    typeOfSession   = messages.StringField(6)
+    date            = messages.StringField(7) #DateTimeField()
+    startTime       = messages.StringField(8) #TimeField()
+    websafeKey      = messages.StringField(9)
+
+class SessionForms(messages.Message):
+    """SessionForms -- multiple Session outbound form message"""
+    items = messages.MessageField(SessionForm, 1, repeated=True)
+
+class SpeakerForm(messages.Message):
+    """SpeakerForm -- Speaker outbound form message"""
+    speaker         = messages.StringField(1)
+    sessionNames    = messages.StringField(2, repeated=True)
+
+class Profile(ndb.Model):
+    """Profile -- User profile object"""
+    displayName = ndb.StringProperty()
+    mainEmail = ndb.StringProperty()
+    teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
+    conferenceKeysToAttend = ndb.StringProperty(repeated=True)
+    sessionsToAttend = ndb.KeyProperty(Session, repeated=True)
+
+class ProfileMiniForm(messages.Message):
+    """ProfileMiniForm -- update Profile form message"""
+    displayName = messages.StringField(1)
+    teeShirtSize = messages.EnumField('TeeShirtSize', 2)
+
+class ProfileForm(messages.Message):
+    """ProfileForm -- Profile outbound form message"""
+    displayName = messages.StringField(1)
+    mainEmail = messages.StringField(2)
+    teeShirtSize = messages.EnumField('TeeShirtSize', 3)
+    conferenceKeysToAttend = messages.StringField(4, repeated=True)
+    
 class TeeShirtSize(messages.Enum):
     """TeeShirtSize -- t-shirt size enumeration value"""
     NOT_SPECIFIED = 1
@@ -105,6 +143,6 @@ class ConferenceQueryForm(messages.Message):
     value = messages.StringField(3)
 
 class ConferenceQueryForms(messages.Message):
-    """ConferenceQueryForms -- multiple ConferenceQueryForm inbound form message"""
+    """ConferenceQueryForms -- multiple Conference query inbound form message"""
     filters = messages.MessageField(ConferenceQueryForm, 1, repeated=True)
 
