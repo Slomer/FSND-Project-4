@@ -830,12 +830,12 @@ class ConferenceApi(remote.Service):
         prof = self._getProfileFromUser()
 
         # If this is a duplicate, throw an exception
-        if sess.key in prof.sessionsToAttend:
+        if request.websafeSessionKey in prof.sessionsToAttend:
             raise endpoints.BadRequestException(
                 'Session already in the wishlist')
 
         # append to user profile's wishlist
-        prof.sessionsToAttend.append(sess.key)
+        prof.sessionsToAttend.append(request.websafeSessionKey)
         prof.put()
 
         return self._copySessionToForm(sess)
@@ -852,8 +852,9 @@ class ConferenceApi(remote.Service):
 
         # get the wishlist from the user's profile
         prof = self._getProfileFromUser()
-        sess_keys = prof.sessionsToAttend
-        sessions = [sess_key.get() for sess_key in sess_keys]
+        sess_keys = [ndb.Key(urlsafe=sess_key) for sess_key in prof.sessionsToAttend]
+        # sessions = ndb.get_multi(sess_keys)
+        sessions = ndb.get_multi(sess_keys)
 
         # return set
         return SessionForms(
