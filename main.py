@@ -13,6 +13,7 @@ created by wesc on 2014 may 24
 __author__ = 'wesc+api@google.com (Wesley Chun)'
 
 import webapp2
+import logging
 from google.appengine.api import app_identity
 from google.appengine.api import mail
 from conference import ConferenceApi
@@ -21,6 +22,14 @@ class SetAnnouncementHandler(webapp2.RequestHandler):
     def get(self):
         """Set Announcement in Memcache."""
         ConferenceApi._cacheAnnouncement()
+        self.response.set_status(204)
+
+
+class FeaturedSpeakerHandler(webapp2.RequestHandler):
+    def post(self):
+        """Set featured speaker in Memcache if appropriate"""
+        logging.info("HELLO!") 
+        ConferenceApi._cacheFeaturedSpeaker(self.request.get('speaker'))
         self.response.set_status(204)
 
 
@@ -37,8 +46,8 @@ class SendConfirmationEmailHandler(webapp2.RequestHandler):
                 'conferenceInfo')
         )
 
-
 app = webapp2.WSGIApplication([
     ('/crons/set_announcement', SetAnnouncementHandler),
+    ('/tasks/check_and_add_featured_speaker', FeaturedSpeakerHandler),
     ('/tasks/send_confirmation_email', SendConfirmationEmailHandler),
 ], debug=True)

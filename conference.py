@@ -17,6 +17,7 @@ from datetime import datetime
 import json
 import os
 import time
+import logging
 
 import endpoints
 from protorpc import messages
@@ -468,11 +469,14 @@ class ConferenceApi(remote.Service):
         # creation of Session & return (modified) SessionForm
         Session(**data).put()
 
-        speakerSessions = Session.query(Session.speaker == data['speaker'])
-        speakerSessionNames = [sess.name for sess in speakerSessions]
-        if len(speakerSessionNames) > 1:
-            cache_string = data['speaker'] + ': ' + ', '.join(speakerSessionNames)
-            memcache.set(MEMCACHE_SPEAKER_KEY, cache_string)
+        taskqueue.add(params={'email': user.email(),
+            'conferenceInfo': repr(request)},
+            url='/tasks/send_confirmation_email'
+        )
+
+        taskqueue.add(params={'speaker': data['speaker']},
+            url='/tasks/check_and_add_featured_speaker'
+        )
         return request
 
 
@@ -650,6 +654,19 @@ class ConferenceApi(remote.Service):
             memcache.delete(MEMCACHE_ANNOUNCEMENTS_KEY)
 
         return announcement
+
+    @staticmethod
+    def _cacheFeaturedSpeaker(speaker):
+        """Check if the specified speaker has more than 1 session
+        and if so, cache them in Memcache as the featured speaker"""
+        # get all sessions with this speaker listed and parse it
+        speakerSessions = Session.query(Session.speaker == speaker)
+        speakerSessionNames = [sess.name for sess in speakerSessions]
+        # if there is more than one session for this speaker, join them all
+        # back together with the speaker name and store it in memcache
+        if len(speakerSessionNames) > 1:
+            cache_string = speaker + ': ' + ', '.join(speakerSessionNames)
+            memcache.set(MEMCACHE_SPEAKER_KEY, cache_string)
 
 
     @endpoints.method(message_types.VoidMessage, StringMessage,
